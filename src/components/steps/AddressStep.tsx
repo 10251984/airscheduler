@@ -50,25 +50,61 @@ export default function AddressStep({ data, onNext }: Props) {
         body: JSON.stringify(form),
       });
 
-      if (!res.ok) {
-        // 404 = static/GitHub Pages deployment (no server-side API).
-        // 502 = validation service unreachable.
-        // Either way surface a clear error; do not silently accept the address.
-        let msg = "Address validation service is temporarily unavailable. Please try again.";
-        try {
-          const json = await res.json();
-          if (json?.error) msg = json.error;
-        } catch { /* non-JSON body — keep default message */ }
-        setError(msg);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.valid) {
+          setValidatedAddress(json.fullAddress);
+        } else {
+          setError(json.error ?? "Address could not be verified.");
+        }
         return;
       }
 
-      const json = await res.json();
-      if (json.valid) {
-        setValidatedAddress(json.fullAddress);
-      } else {
-        setError(json.error ?? "Address could not be verified.");
+      if (res.status === 404) {
+        // Static / GitHub Pages deployment — no server-side API route.
+        // Fall back to Photon (OpenStreetMap), which supports browser CORS.
+        const parts = [form.street.trim(), form.apt.trim()].filter(Boolean);
+        const q = `${parts.join(" ")}, ${form.city.trim()}, ${form.state} ${form.zip.trim()}`;
+        const photonRes = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        const photonData = await photonRes.json() as {
+          features?: {
+            properties: {
+              countrycode?: string;
+              housenumber?: string;
+              street?: string;
+              city?: string;
+              state?: string;
+              postcode?: string;
+            };
+          }[];
+        };
+        const usResults = (photonData?.features ?? []).filter(
+          (f) => f.properties?.countrycode === "US"
+        );
+        if (usResults.length === 0) {
+          setError("Address could not be verified. Please check your entry and try again.");
+          return;
+        }
+        const p = usResults[0].properties;
+        const addrParts = [
+          [p.housenumber, p.street].filter(Boolean).join(" "),
+          p.city,
+          [p.state, p.postcode].filter(Boolean).join(" "),
+        ].filter(Boolean);
+        setValidatedAddress(addrParts.join(", "));
+        return;
       }
+
+      // Other non-OK (e.g. 502 — Census API unreachable on the server side).
+      let msg = "Address validation service is temporarily unavailable. Please try again.";
+      try {
+        const json = await res.json();
+        if (json?.error) msg = json.error;
+      } catch { /* non-JSON body — keep default */ }
+      setError(msg);
     } catch {
       setError("Could not reach the validation service. Please check your connection and try again.");
     } finally {
