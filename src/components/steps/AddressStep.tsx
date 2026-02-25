@@ -60,51 +60,41 @@ export default function AddressStep({ data, onNext }: Props) {
         return;
       }
 
-      if (res.status === 404) {
-        // Static / GitHub Pages deployment — no server-side API route.
-        // Fall back to Photon (OpenStreetMap), which supports browser CORS.
-        const parts = [form.street.trim(), form.apt.trim()].filter(Boolean);
-        const q = `${parts.join(" ")}, ${form.city.trim()}, ${form.state} ${form.zip.trim()}`;
-        const photonRes = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3`,
-          { signal: AbortSignal.timeout(8000) }
-        );
-        const photonData = await photonRes.json() as {
-          features?: {
-            properties: {
-              countrycode?: string;
-              housenumber?: string;
-              street?: string;
-              city?: string;
-              state?: string;
-              postcode?: string;
-            };
-          }[];
-        };
-        const usResults = (photonData?.features ?? []).filter(
-          (f) => f.properties?.countrycode === "US"
-        );
-        if (usResults.length === 0) {
-          setError("Address could not be verified. Please check your entry and try again.");
-          return;
-        }
-        const p = usResults[0].properties;
-        const addrParts = [
-          [p.housenumber, p.street].filter(Boolean).join(" "),
-          p.city,
-          [p.state, p.postcode].filter(Boolean).join(" "),
-        ].filter(Boolean);
-        setValidatedAddress(addrParts.join(", "));
+      // Server API unavailable for any reason (404 = no API in static/GitHub
+      // Pages deployment; 502 = Census unreachable on the server; etc.).
+      // Fall back to Photon (OpenStreetMap) which supports browser CORS.
+      const parts = [form.street.trim(), form.apt.trim()].filter(Boolean);
+      const q = `${parts.join(" ")}, ${form.city.trim()}, ${form.state} ${form.zip.trim()}`;
+      const photonRes = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const photonData = await photonRes.json() as {
+        features?: {
+          properties: {
+            countrycode?: string;
+            housenumber?: string;
+            street?: string;
+            city?: string;
+            state?: string;
+            postcode?: string;
+          };
+        }[];
+      };
+      const usResults = (photonData?.features ?? []).filter(
+        (f) => f.properties?.countrycode === "US"
+      );
+      if (usResults.length === 0) {
+        setError("Address could not be verified. Please check your entry and try again.");
         return;
       }
-
-      // Other non-OK (e.g. 502 — Census API unreachable on the server side).
-      let msg = "Address validation service is temporarily unavailable. Please try again.";
-      try {
-        const json = await res.json();
-        if (json?.error) msg = json.error;
-      } catch { /* non-JSON body — keep default */ }
-      setError(msg);
+      const p = usResults[0].properties;
+      const addrParts = [
+        [p.housenumber, p.street].filter(Boolean).join(" "),
+        p.city,
+        [p.state, p.postcode].filter(Boolean).join(" "),
+      ].filter(Boolean);
+      setValidatedAddress(addrParts.join(", "));
     } catch {
       setError("Could not reach the validation service. Please check your connection and try again.");
     } finally {
