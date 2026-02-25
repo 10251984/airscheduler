@@ -49,8 +49,18 @@ export default function AddressStep({ data, onNext }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const json = await res.json();
 
+      // API route not available (static/GitHub Pages deployment) — accept the
+      // address as-is after the basic format checks already performed above.
+      if (res.status === 404) {
+        const parts = [form.street.trim(), form.apt.trim()].filter(Boolean);
+        setValidatedAddress(
+          `${parts.join(" ")}, ${form.city.trim()}, ${form.state} ${form.zip.trim()}`
+        );
+        return;
+      }
+
+      const json = await res.json();
       if (json.valid) {
         setValidatedAddress(json.fullAddress);
       } else {
