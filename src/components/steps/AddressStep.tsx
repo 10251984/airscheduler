@@ -44,60 +44,33 @@ export default function AddressStep({ data, onNext }: Props) {
 
     setLoading(true);
     try {
-      // Step 1: try server-side API (Vercel / local dev with full server).
-      // If unreachable or unavailable, fall through to the direct Census call.
-      let serverHandled = false;
-      try {
-        const res = await fetch("/api/validate-address", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        if (res.ok) {
+      const res = await fetch("/api/validate-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        // 404 = static/GitHub Pages deployment (no server-side API).
+        // 502 = validation service unreachable.
+        // Either way surface a clear error; do not silently accept the address.
+        let msg = "Address validation service is temporarily unavailable. Please try again.";
+        try {
           const json = await res.json();
-          if (json.valid) {
-            setValidatedAddress(json.fullAddress);
-          } else {
-            setError(json.error ?? "Address could not be verified.");
-          }
-          serverHandled = true;
-        }
-        // Non-OK (404 = static deploy, 502 = Census unreachable server-side,
-        // etc.) — fall through to the browser-side Census call below.
-      } catch {
-        // Server API threw (connection refused, etc.) — fall through.
+          if (json?.error) msg = json.error;
+        } catch { /* non-JSON body — keep default message */ }
+        setError(msg);
+        return;
       }
 
-      if (serverHandled) return;
-
-      // Step 2: call the Census Geocoding API directly from the browser.
-      // The API supports CORS, so this works even in static deployments.
-      const parts = [form.street.trim(), form.apt.trim()].filter(Boolean);
-      const formatted = `${parts.join(" ")}, ${form.city.trim()}, ${form.state} ${form.zip.trim()}`;
-      const encoded = encodeURIComponent(formatted);
-      const censusUrl =
-        `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress` +
-        `?address=${encoded}&benchmark=Public_AR_Current&format=json`;
-
-      try {
-        const censusRes = await fetch(censusUrl, {
-          signal: AbortSignal.timeout(8000),
-        });
-        const data = await censusRes.json();
-        const matches: { matchedAddress: string }[] =
-          data?.result?.addressMatches ?? [];
-
-        if (matches.length > 0) {
-          setValidatedAddress(matches[0].matchedAddress);
-        } else {
-          setError(
-            "Address could not be verified. Please check your entry and try again."
-          );
-        }
-      } catch {
-        // Step 3: Census API also unreachable — accept the format-valid address.
-        setValidatedAddress(formatted);
+      const json = await res.json();
+      if (json.valid) {
+        setValidatedAddress(json.fullAddress);
+      } else {
+        setError(json.error ?? "Address could not be verified.");
       }
+    } catch {
+      setError("Could not reach the validation service. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
