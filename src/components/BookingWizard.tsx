@@ -11,7 +11,7 @@ import ConfirmationStep from "./steps/ConfirmationStep";
 
 const EMPTY_BOOKING: BookingData = {
   address: { street: "", apt: "", city: "", state: "", zip: "", validated: false },
-  schedule: { date: "", timeSlot: "" },
+  schedule: { date: "" },
   contact: { firstName: "", lastName: "", email: "", phone: "" },
   payment: { completed: false },
 };

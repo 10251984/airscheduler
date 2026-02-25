@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
         customerEmail: contact.email,
         serviceAddress: address.fullAddress ?? "",
         serviceDate: schedule.date,
-        serviceTime: schedule.timeSlot,
       },
     });
 

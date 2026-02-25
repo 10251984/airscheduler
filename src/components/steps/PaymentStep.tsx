@@ -215,10 +215,6 @@ export default function PaymentStep({ bookingData, onNext, onBack }: Props) {
           <span className="text-gray-900">{formatDate(schedule.date)}</span>
         </div>
         <div className="flex justify-between text-gray-600">
-          <span>Time</span>
-          <span className="text-gray-900">{schedule.timeSlot}</span>
-        </div>
-        <div className="flex justify-between text-gray-600">
           <span>Customer</span>
           <span className="text-gray-900">{contact.firstName} {contact.lastName}</span>
         </div>

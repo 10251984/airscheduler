@@ -60,7 +60,6 @@ export default function ConfirmationStep({ bookingData, paymentIntentId, onReset
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Appointment</p>
             <p className="text-gray-900 text-sm mt-0.5">{formatDate(schedule.date)}</p>
-            <p className="text-gray-600 text-sm">{schedule.timeSlot}</p>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ScheduleData, TIME_SLOTS } from "@/lib/types";
+import { ScheduleData } from "@/lib/types";
 
 interface Props {
   data: ScheduleData;
@@ -39,7 +39,6 @@ export default function ScheduleStep({ data, onNext, onBack }: Props) {
     data.date ? parseInt(data.date.split("-")[1]) - 1 : today.getMonth()
   );
   const [selectedDate, setSelectedDate] = useState<string>(data.date);
-  const [selectedSlot, setSelectedSlot] = useState<string>(data.timeSlot);
   const [error, setError] = useState<string | null>(null);
 
   // Max bookable date: 60 days from today
@@ -76,15 +75,12 @@ export default function ScheduleStep({ data, onNext, onBack }: Props) {
 
   function isAvailable(day: number): boolean {
     const d = new Date(viewYear, viewMonth, day);
-    const dow = d.getDay();
-    // Weekdays only, after today, within 60 days
-    return dow !== 0 && dow !== 6 && d > today && d <= maxDate;
+    return d > today && d <= maxDate;
   }
 
   function selectDay(day: number) {
     const d = new Date(viewYear, viewMonth, day);
     setSelectedDate(toLocalDateString(d));
-    setSelectedSlot("");
     setError(null);
   }
 
@@ -93,11 +89,7 @@ export default function ScheduleStep({ data, onNext, onBack }: Props) {
       setError("Please select a service date.");
       return;
     }
-    if (!selectedSlot) {
-      setError("Please select a time slot.");
-      return;
-    }
-    onNext({ date: selectedDate, timeSlot: selectedSlot });
+    onNext({ date: selectedDate });
   }
 
   // Check if we can go to previous month
@@ -108,7 +100,7 @@ export default function ScheduleStep({ data, onNext, onBack }: Props) {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-1">Choose a Date</h2>
-      <p className="text-gray-500 mb-6">Select a weekday for your service visit.</p>
+      <p className="text-gray-500 mb-6">Select any day for your service visit.</p>
 
       {/* Calendar */}
       <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -175,32 +167,6 @@ export default function ScheduleStep({ data, onNext, onBack }: Props) {
           })}
         </div>
       </div>
-
-      {/* Time slots */}
-      {selectedDate && (
-        <div className="mt-6">
-          <p className="text-sm font-semibold text-gray-700 mb-3">
-            Available times for{" "}
-            <span className="text-blue-600">{formatDateDisplay(selectedDate)}</span>
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {TIME_SLOTS.map((slot) => (
-              <button
-                key={slot}
-                onClick={() => { setSelectedSlot(slot); setError(null); }}
-                className={`
-                  border rounded-lg px-4 py-3 text-sm font-medium text-left transition-all
-                  ${selectedSlot === slot
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"}
-                `}
-              >
-                {slot}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {error && (
         <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
